@@ -3,7 +3,7 @@ import { Log } from '@microsoft/sp-core-library';
 import {
   BaseApplicationCustomizer
 } from '@microsoft/sp-application-base';
-
+import { sp } from "@pnp/sp/presets/all";
 import * as strings from 'AnalyticsApplicationCustomizerStrings';
 
 const LOG_SOURCE: string = 'AnalyticsApplicationCustomizer';
@@ -24,40 +24,46 @@ export default class AnalyticsApplicationCustomizer
   @override
   public onInit(): Promise<void> {
     Log.info(LOG_SOURCE, `Initialized ${strings.Title}`);
-
+    sp.setup({
+      spfxContext: this.context
+    });
     // Retrieve properties to configure the extension
     const {  disableAsync } = this.properties;
-    const trackingId = "UA-195302794-3"
+    const trackingId = "UA-195302794-5"
     // Check that we have the mandatory tracking ID
     if (!trackingId) {
       // If there was no Google Tracking ID provided, we can stop here
       Log.info(LOG_SOURCE, `No tracking ID provided`);
       return Promise.resolve();
     }
+    let scriptTag: HTMLScriptElement = document.createElement("script");
+    scriptTag.nodeValue = 
+    scriptTag.type = "text/javascript";
+    document.getElementsByTagName("head")[0].appendChild(scriptTag);
 
     let html: string = '';
 
-    // Google supports an async and sync approach to calling Google Analytics
-    // Async is more efficient, but isn't supported on -- ahem -- legacy browsers.
-
-    // If your organization still supports legacy browsers (and, most likely, faxes) you can disable
-    // async support in the extension's configuration, by passing disableAsync: true
-    if (disableAsync === true) {
-      // Using legacy mode
-      html += `
-        (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
-        (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
-        m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
-        })(window,document,'script','https://www.google-analytics.com/analytics.js','ga');
-
-        ga('create', '${trackingId}', 'auto');
-        ga('send', 'pageview');`;
-    } else {
-      // Using modern browser async approach
-      html = `window.ga=window.ga||function(){(ga.q=ga.q||[]).push(arguments)};ga.l=+new Date;
-        ga('create', '${trackingId}', 'auto');
-        ga('send', 'pageview');`;
-    }
+      
+      if (disableAsync === true) {
+        // Using legacy mode
+        html += `
+          (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+          (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+          m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+          })(window,document,'script','https://www.google-analytics.com/analytics.js','ga');
+  
+          ga('create', '${trackingId}', 'auto');
+          ga('send', 'pageview');
+          `;
+          //ga('set', '${idUser.Id}', 'USER_ID');
+      } else {
+        // Using modern browser async approach
+        html = `window.ga=window.ga||function(){(ga.q=ga.q||[]).push(arguments)};ga.l=+new Date;
+          ga('create', '${trackingId}', 'auto');
+          ga('send', 'pageview');
+          `;
+      }
+    // })
 
     // Create an element at the end of the document
     const body: HTMLElement = document.documentElement;
@@ -85,5 +91,9 @@ export default class AnalyticsApplicationCustomizer
     }
 
     return Promise.resolve();
+  }
+
+  public getCurrentUser():Promise<any>{
+    return sp.web.currentUser()
   }
 }
